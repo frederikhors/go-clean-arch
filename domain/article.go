@@ -33,4 +33,5 @@ type ArticleRepository interface {
 	Update(ctx context.Context, ar *Article) error
 	Store(ctx context.Context, a *Article) error
 	Delete(ctx context.Context, id int64) error
+	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 }

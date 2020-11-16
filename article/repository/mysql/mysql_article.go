@@ -21,7 +21,18 @@ func NewMysqlArticleRepository(Conn *sql.DB) domain.ArticleRepository {
 }
 
 func (m *mysqlArticleRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.Article, err error) {
-	rows, err := m.Conn.QueryContext(ctx, query, args...)
+	//I can also create an helper like this:
+	//dbConn := db.GetTxFromCtxOrUseDBConn(ctx, m.Conn)
+	//instead of this (it doesn't work, I don't know how to do):
+	var dbConn interface{}
+	tx, ok := repository.GetTransactionFromCtx(ctx)
+	if ok {
+		dbConn = tx
+	} else {
+		dbConn, _ = m.Conn.BeginTx(ctx, nil)
+	}
+
+	rows, err := dbConn.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.Error(err)
 		return nil, err
@@ -181,4 +192,8 @@ func (m *mysqlArticleRepository) Update(ctx context.Context, ar *domain.Article)
 	}
 
 	return
+}
+
+func (m *mysqlArticleRepository) WithTransaction(ctx context.Context, fn func(c context.Context) error) (err error) {
+	return repository.WithTransaction(ctx, m.Conn, fn)
 }

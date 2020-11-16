@@ -143,6 +143,31 @@ func (a *articleUsecase) GetByTitle(c context.Context, title string) (res domain
 	return
 }
 
+func (a *articleUsecase) GetByTitleWithTransaction(c context.Context, title string) (res domain.Article, err error) {
+	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
+	defer cancel()
+
+	err = a.articleRepo.WithTransaction(ctx, func(ctx context.Context) (err error) {
+		res, err = a.articleRepo.GetByTitle(ctx, title)
+		if err != nil {
+			return
+		}
+
+		resAuthor, err := a.authorRepo.GetByID(ctx, res.Author.ID)
+		if err != nil {
+			return err
+		}
+
+		res.Author = resAuthor
+		return
+	})
+	if err != nil {
+		return domain.Article{}, err
+	}
+
+	return
+}
+
 func (a *articleUsecase) Store(c context.Context, m *domain.Article) (err error) {
 	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
 	defer cancel()
